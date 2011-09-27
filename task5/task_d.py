@@ -67,6 +67,7 @@ def get_image_link(link):
 
 def build_image_link_list(start, end):
     # assume each line contains a single tweet
+    img_links = []
     for index in xrange(start, end):
         line = linecache.getline("egypt_dataset.txt", index) # NOTE: load whole file into memory
         tweet = json.loads(line)
@@ -78,21 +79,22 @@ def build_image_link_list(start, end):
                 if img_link == "":
                     break
                 else:
-                   img_links.append(str(tweet_count)+","+img_link)
+                   img_links.append((str(index), img_link))
+    return img_links 
+
+def count_tweets(filepath);
+    pass
 
 def main():
     total_tweets = 1873613 # hard coded for egypt dataset for now...
     tweet_count = 0
 
-    img_links = []
-    num_procs = 100
+    num_procs = 1000
     jobsize = int(total_tweets / num_procs) # NOTE: ignore negligible remainder for now... 
-    checkpoint = int(jobsize * 0.2)
     
     p = Pool(num_procs)
-    p.apply_async(build_image_link_list, )
-    p.map(p, build_image_link_list)
-    # reduce here
+    chunks = [(i,i+jobsize) for i in range(0, total_tweets+1, jobsize)]
+    image_list = [p.apply_async(build_image_link_list, c) for c in chunks]
 
     output = open("image_links.txt", "w")
     output.writelines(img_links)
