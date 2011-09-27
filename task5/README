@@ -1,0 +1,7 @@
+5. Analysis of social links in Egypt and Japan data sets.
+Result: Construct a network where each source we have tweets from is a node, and each relation in the form X follows Y is a directed link from Y to X. Draw the following curves:
+
+a) Distribution of Out-degree. X-axis: number of followers a node has (that are also in our set of sources). Y-axis: % of nodes that has that number of followers.
+b) Distribution of In-degree. Y-axis: number of sources that a node follows (that are in our set of sources). Y-axis: % of nodes that follow that number.
+c) Retweet Histogram. X-axis: number of retweets of a single tweet. Y-axis: % of tweets that have this number of retweets each.
+d) The percentage of tweets that have references to pictures. extract image links

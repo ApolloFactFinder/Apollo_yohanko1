@@ -1,3 +1,8 @@
+# Run: python task_ab.py <data_source> <user sample rate>
+# data_source expected to be in twitter json format
+
+import sys
+import random
 import matplotlib
 import matplotlib.pyplot as plt
 import json
@@ -5,6 +10,7 @@ import re
 import httplib
 import urlparse
 import time
+
 # task
 #5. Analysis of social links in Egypt and Japan data sets.
 #Result: Construct a network where each source we have tweets from is a node, and each relation in the form X follows Y is a directed link from Y to X. Draw the following curves:
@@ -26,39 +32,8 @@ def plot_follow_histogram(user_data, xlabel, ylabel):
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
 
-    fig.savefig("plot_"+xlabel+"_"+ylabel, format='png')
+    fig.savefig("plot_"+xlabel+"_"+ylabel+".png", format='png')
     
-
-#c) Retweet Histogram. X-axis: number of retweets of a single tweet. Y-axis: % of tweets that have this number of retweets each.
-# y-axis: out of total tweets?
-def plot_c():
-    pass
-
-#d) The percentage of tweets that have references to pictures.
-#need plot for this? not sure what's "references" refers to?
-
-
-def unshorten_url(url):
-    try:
-        parsed = urlparse.urlparse(url)
-        h = httplib.HTTPConnection(parsed.netloc, timeout=5)
-        h.request('HEAD', parsed.path)
-        response = h.getresponse()
-        if response.status/100 == 3 and response.getheader('Location'):
-            return unshorten_url(response.getheader('Location')) # changed to process chains of short urls
-        else:
-            return url
-    except Exception:
-        return ""
-
-import urllib2
-def s_unshorten_url(url):
-    try:
-        dst = urllib2.urlopen(url, timeout=10)
-    except Exception:
-        return ""
-    return dst.url
-
 # sample tweet
 #{"text": "RT @Salon: Egypt's final web provider goes dark http://salon.com/a/sWCYfAA", 
 #"profile_image_url": "http://a0.twimg.com/profile_images/540646668/salon_icon_93x93_normal.png", 
@@ -74,83 +49,66 @@ def s_unshorten_url(url):
 #"id_str": "32282967938170880", 
 #"created_at": "Tue, 01 Feb 2011 03:43:54 +0000", 
 #"metadata": {"result_type": "recent"}}
-IMG_KEYWORDS = [
-"twitpic", "imgur", "postimage", "picasaweb",
-"flickr", "imagehostinga", "photobucket",
-"yfrog", "zooomr", 
-"image", "img",  "photo", "pic"
-]
-
-def is_image_link(link):
-    u = unshorten_url(link)
-    for i in IMG_KEYWORDS:
-        if i in u:
-            return True
-    return False
 
 def main():
+    if len(sys.argv) is not 3:
+        print "usage: python task_ab.py <data_filepath> <user sample rate>"
+        sys.exit(0)
+
+    filepath = sys.argv[1]
+    sample_rate = float(sys.argv[2])
+
+    if not (0.0 < sample_rate <= 1.0):
+        print "sample rate:" + sample_rate
+        print "please input sample rate between 0 and 1"
+        sys.exit(0)
+
     user_api1 = "api.twitter.com"
     user_api2 = "/1/users/show.json?screen_name=%(user)s&include_entities=2"
     api_following = "friends_count"
     api_follower = "followers_count"
 
-    tweet_count = 0
-    link_count = 0
-    img_link_count = 0
-
-    user_data_a = {}
-    user_data_b = {}
+    users = set()
+    user_data_a, user_data_b = {}, {}
 
     # assume each line contains a single tweet
-    f = open("egypt_dataset.txt")
+    #f = open("egypt_dataset.txt")
+    f = open(filepath)
+    for line in f:
+        tweet = json.loads(line)
+        user = tweet["from_user"]
+        users.add(user)
+    f.close()
+
+    print "total users: " + str(len(users))
+    print "sampling " + str(int(len(users) * sample_rate)) + "users"
+
+    sample_users = random.sample(users, len(users))
+    countdown = int(sample_rate * len(users))
 
     api_conn = httplib.HTTPConnection(user_api1)
-    for line in f:
-        tweet_count += 1
-        tweet = json.loads(line)
-
-        # getting data for part a and b
-        user = tweet["from_user"]
-        if user is None:
-            print tweet
+    for user in sample_users:
+        if countdown == 0:
             break
 
         if user not in user_data_a:
             api_conn.request("GET", "/" + user_api2 % { "user":user })
             response = api_conn.getresponse()
+
             if response.status == 200: 
                 user_string = response.read()
                 user_json = json.loads(user_string)
                 user_data_a[str(user)] = user_json[api_follower]
                 user_data_b[str(user)] = user_json[api_following]
+                countdown -= 1
             elif response.status == 400: #rate limit exceeded
                 print "rate limit reached"
                 print "response: "+response.read()
-                print "sleeping for 1 hours"
-                time.sleep(3600)
-        else:
-            continue
-        
-
-        if False: # part d: % of images in tweet -> around 3%
-            urls = re.findall(r'https?://\S+', tweet['text'])
-            if len(urls) is not 0:
-                link_count += 1
-                for link in urls:
-                    if is_image_link(link):
-                        img_link_count += 1
-                        break # count only once per tweet
-            if tweet_count % 1000 == 0:
-                print "total link count: " + str(link_count)
-                print "total image link count: " + str(img_link_count)
-                print "total tweets: " + str(tweet_count)
-                print "percentage: " + str((img_link_count*100) / float(tweet_count))
-
-    f.close()
+                print "retrying in 10 minutes"
+                time.sleep(60 * 10)
 
     plot_follow_histogram(user_data_a, "a_followers", "percentage")
     plot_follow_histogram(user_data_b, "b_followees", "percentage")
-    #plot_c()
 
 if __name__ == '__main__':
     main() 

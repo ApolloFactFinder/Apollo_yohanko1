@@ -1,3 +1,11 @@
+# parallel version of getting image links
+# task
+#5. Analysis of social links in Egypt and Japan data sets.
+#Result: Construct a network where each source we have tweets from is a node, and each relation in the form X follows Y is a directed link from Y to X. Draw the following curves:
+
+#d) The percentage of tweets that have references to pictures.
+#need plot for this? not sure what's "references" refers to?
+
 import matplotlib
 import matplotlib.pyplot as plt
 import json
@@ -6,12 +14,7 @@ import httplib
 import urlparse
 import time
 from multiprocessing import Pool
-# task
-#5. Analysis of social links in Egypt and Japan data sets.
-#Result: Construct a network where each source we have tweets from is a node, and each relation in the form X follows Y is a directed link from Y to X. Draw the following curves:
-
-#d) The percentage of tweets that have references to pictures.
-#need plot for this? not sure what's "references" refers to?
+import linecache
 def unshorten_url(url):
     try:
         parsed = urlparse.urlparse(url)
@@ -62,35 +65,14 @@ def get_image_link(link):
             return u + "\r\n"
     return ""
 
-def main():
-    user_api1 = "api.twitter.com"
-    user_api2 = "/1/users/show.json?screen_name=%(user)s&include_entities=2"
-    api_following = "friends_count"
-    api_follower = "followers_count"
-
-    total_tweets = 1873613 # hard coded for egyp dataset for now...
-    tweet_count = 0
-    link_count = 0
-
-    img_links = []
-    num_procs = 100
-    jobsize = int(total_tweets / num_procs) # NOTE: ignore negligible remainder for now... 
-    checkpoint = int(jobsize * 0.2)
-    
-    p = Pool(num_procs) # spawn 50 threads
-    p.map()
-
+def build_image_link_list(start, end):
     # assume each line contains a single tweet
-    f = open("egypt_dataset.txt")
-
-    api_conn = httplib.HTTPConnection(user_api1)
-    for line in f:
-        tweet_count += 1
+    for index in xrange(start, end):
+        line = linecache.getline("egypt_dataset.txt", index) # NOTE: load whole file into memory
         tweet = json.loads(line)
 
         urls = re.findall(r'https?://\S+', tweet['text'])
         if len(urls) is not 0:
-            link_count += 1
             for link in urls:
                 img_link = get_image_link(link)
                 if img_link == "":
@@ -98,11 +80,23 @@ def main():
                 else:
                    img_links.append(str(tweet_count)+","+img_link)
 
+def main():
+    total_tweets = 1873613 # hard coded for egypt dataset for now...
+    tweet_count = 0
+
+    img_links = []
+    num_procs = 100
+    jobsize = int(total_tweets / num_procs) # NOTE: ignore negligible remainder for now... 
+    checkpoint = int(jobsize * 0.2)
+    
+    p = Pool(num_procs)
+    p.apply_async(build_image_link_list, )
+    p.map(p, build_image_link_list)
+    # reduce here
 
     output = open("image_links.txt", "w")
     output.writelines(img_links)
     output.close()
-    f.close()
 
 if __name__ == '__main__':
     main() 
