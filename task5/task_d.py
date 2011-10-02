@@ -13,8 +13,10 @@ import re
 import httplib
 import urlparse
 import time
-from multiprocessing import Pool
-import linecache
+import multiprocessing
+import Queue
+import sys
+
 def unshorten_url(url):
     try:
         parsed = urlparse.urlparse(url)
@@ -65,13 +67,10 @@ def get_image_link(link):
             return u + "\r\n"
     return ""
 
-def build_image_link_list(start, end):
+def queue_image_links(chunk_range):
     # assume each line contains a single tweet
-    img_links = []
-    for index in xrange(start, end):
-        line = linecache.getline("egypt_dataset.txt", index) # NOTE: load whole file into memory
-        tweet = json.loads(line)
-
+    for index in xrange(chunk_range[0], chunk_rage[1]):
+        tweet = json.loads(tweets[index-1])
         urls = re.findall(r'https?://\S+', tweet['text'])
         if len(urls) is not 0:
             for link in urls:
@@ -79,25 +78,56 @@ def build_image_link_list(start, end):
                 if img_link == "":
                     break
                 else:
-                   img_links.append((str(index), img_link))
-    return img_links 
+                   links_queue.put((index, img_link))
 
-def count_tweets(filepath);
-    pass
+def proc_init(shared_queue, shared_tweets):
+    global links_queue
+    global tweets
+    links_queue = shared_queue
+    tweets = shared_tweets
 
+
+# flow: spawn threads for IO, which put their results into a queue 
+# after all thread is done, sort queue and write into a file
 def main():
-    total_tweets = 1873613 # hard coded for egypt dataset for now...
-    tweet_count = 0
+    if len(sys.argv) is not 3:
+        print "usage: python task_d.py <data_filepath> <# of procs>"
+        print "suggest # of procs == 100"
+        sys.exit(0)
 
-    num_procs = 1000
+    datafile = sys.argv[1] 
+
+    dataf = open(datafile)
+    tweets = dataf.readlines() # yeah! throw whole thing in the memory for multiprocessing
+    dataf.close()
+
+    #total_tweets = len(k)
+    total_tweets = 1000
+    links_queue = Queue.PriorityQueue() # queue of (index, unshortened url string)
+
+    num_procs = int(sys.argv[2])
     jobsize = int(total_tweets / num_procs) # NOTE: ignore negligible remainder for now... 
-    
-    p = Pool(num_procs)
-    chunks = [(i,i+jobsize) for i in range(0, total_tweets+1, jobsize)]
-    image_list = [p.apply_async(build_image_link_list, c) for c in chunks]
+
+    # could use manager...but no priority queue support
+    #manager = multiprocessing.Manager()
+    #shared_q = manager.
+
+    starts, ends = [], []
+    for i in range(1, total_tweets+1, jobsize):
+        starts.append(i)
+        if i+jobsize > total_tweets:
+            ends.append(total_tweets)
+        else:
+            ends.append(i+jobsize)
+
+    pl = multiprocessing.Pool(num_procs, initializer = proc_init, initargs = (links_queue, tweets))
+    pl.map_async(queue_image_links, zip(starts, ends))
+    pl.close()
+    pl.join()
 
     output = open("image_links.txt", "w")
-    output.writelines(img_links)
+    while not links_queue.empty():
+        output.writelines(str(links_queue.get())[1:-1])
     output.close()
 
 if __name__ == '__main__':
