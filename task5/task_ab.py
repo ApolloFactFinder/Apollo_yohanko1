@@ -51,7 +51,7 @@ def plot_follow_histogram(user_data, xlabel, ylabel):
 #"metadata": {"result_type": "recent"}}
 
 def main():
-    if len(sys.argv) is not 3:
+    if len(sys.argv) != 3:
         print "usage: python task_ab.py <data_filepath> <user sample rate>"
         sys.exit(0)
 

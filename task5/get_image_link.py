@@ -90,9 +90,9 @@ def get_image_link(tweet):
                 return img_link
     return ""
     
-if __name__ == '__main__':
-    f = open("../egypt_dataset.txt")
-    tweets = f.readlines()
-    f.close()
-    for tweet in tweets:
-        get_image_link(json.loads(tweet))
+#if __name__ == '__main__':
+#    f = open("../egypt_dataset.txt")
+#    tweets = f.readlines()
+#    f.close()
+#    for tweet in tweets:
+#        get_image_link(json.loads(tweet))
