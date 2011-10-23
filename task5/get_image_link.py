@@ -22,7 +22,10 @@ def get_image_hotlink(url):
 
     raw_html = dst.read() 
     dst.close()
-    soup = BeautifulSoup(raw_html)
+    try:
+        soup = BeautifulSoup(raw_html.encode('utf-8'))
+    except Exception:
+        return url
 
     image_url = url # just return pure url for other hostings... 
     print "url::"  + image_url
