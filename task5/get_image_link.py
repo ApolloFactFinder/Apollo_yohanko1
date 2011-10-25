@@ -89,7 +89,6 @@ def get_image_link(tweet):
         for link in urls:
             img_link = inspect_link(link)
             if img_link != "":
-                print img_link
                 return img_link
     return ""
     
