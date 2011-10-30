@@ -1,6 +1,13 @@
-import re, httplib, urlparse
-import json
+import sys, os, re, httplib, urlparse, json
+from BeautifulSoup import BeautifulSoup
+from StringIO import StringIO
+from PIL import Image
+import urllib2
+import pycurl
 
+temp_name = 'img_temp'
+
+#----------------------------------deprecated-------------------------------
 IMG_KEYWORDS = [
 "twitpic", "imgur", "postimage", "picasaweb",
 "flickr", "imagehostinga", "photobucket",
@@ -10,8 +17,6 @@ IMG_KEYWORDS = [
 
 link_cache = {}
 
-import urllib2
-from BeautifulSoup import BeautifulSoup
 # don't bother to use api for each...inspected manually for each html 
 def get_image_hotlink(url):
     url = "http://"+url if "http" not in url else url
@@ -28,7 +33,7 @@ def get_image_hotlink(url):
         return url
 
     image_url = url # just return pure url for other hostings... 
-    print "url::"  + image_url
+    #print "url::"  + image_url
     if "twitpic" in url:
         img_tag = soup.find('img', attrs = { 'id':re.compile("photo-display"), 'class' : re.compile("photo") })
     elif "yfrog" in url:
@@ -53,14 +58,14 @@ def unshorten_url(url):
         h = httplib.HTTPConnection(parsed.netloc, timeout=5) # modify this value at your convinience
         h.request('HEAD', parsed.path)
         response = h.getresponse()
-        if response.status == 300 and response.getheader('Location'):
+        if response.status/100 == 3 and response.getheader('Location'):
             return unshorten_url(response.getheader('Location')) # changed to process chains of short urls
         else:
             return url
     except Exception:
         return ""
 
-def inspect_link(link):
+def inspect_link_httpheader(link):
     cached = link_cache.get(link)
     if cached != None:
         return cached
@@ -70,31 +75,126 @@ def inspect_link(link):
         if i in u:
             hotlink = get_image_hotlink(u)
             link_cache[link] = hotlink
-            print hotlink
+            #print hotlink
             return hotlink
     return ""
+
+def inspect_link_pycurl(link):
+    storage = StringIO()
+    c = pycurl.Curl()
+    c.setopt(c.URL, link)
+    c.setopt(c.WRITEFUNCTION, storage.write)
+    c.setopt(c.FOLLOWLOCATION, 1)
+    c.setopt(c.MAXREDIRS, 6)
+    c.perform()
+    c.close()
+
+    # not sure how to set this: final_url
+    biggest_img_link = get_biggest_img(storage.getvalue())
+    
+    return final_url, biggest_img_link
+
+#----------------------------------deprecated ends-------------------------------
+
+# copied from Werkzeug
+import urllib
+import urlparse
+
+def url_fix(s, charset='utf-8'):
+    """Sometimes you get an URL by a user that just isn't a real
+    URL because it contains unsafe characters like ' ' and so on.  This
+    function can fix some of the problems in a similar way browsers
+    handle data entered by the user:
+
+    :param charset: The target charset for the URL if the url was
+                    given as unicode string.
+    """
+    if isinstance(s, unicode):
+        s = s.encode(charset, 'ignore')
+    scheme, netloc, path, qs, anchor = urlparse.urlsplit(s)
+    path = urllib.quote(path, '/%')
+    qs = urllib.quote_plus(qs, ':&=')
+    return urlparse.urlunsplit((scheme, netloc, path, qs, anchor))
+
+def get_biggest_img(origin, html):
+    try:
+        soup = BeautifulSoup(html)
+    except UnicodeDecodeError:
+        print "unable to parse URL"
+        return ""
+    img_tags = soup.findAll('img')
+
+    if img_tags == None:
+        print "no image found"
+        return ""
+        
+    max_dim_url = ""
+    max_dim = (0,0)
+    # download imgs and check dimension
+    for i in img_tags:
+        try:
+            esc_url = url_fix(i['src'])
+        except:
+            continue
+        #print "o: " + origin
+        #print "e: " + esc_url
+        if "http" not in esc_url: # almost always web img files...so just ignore
+            continue
+        try:
+            k = urllib2.urlopen(esc_url).read()
+        except: #urllib2.HTTPError, ignore 4xx errors
+            continue
+        f = open(temp_name, 'w')
+        f.write(k)
+        f.close()
+        try:
+            im = Image.open(temp_name)
+            #print im.size
+            if im.size > max_dim:
+                max_dim = im.size
+                max_dim_url = i['src']
+        except:
+            continue
+
+    if os.path.isfile(temp_name):
+        os.remove(temp_name)
+    return max_dim_url
+        
+
+def inspect_link_urllib2(link):
+    original_url = "http://"+link if "http" not in link else link
+    try:
+        dst = urllib2.urlopen(original_url, timeout=5)
+    except:
+        print "url invalid: " + link
+        return link, ""
+    final_url = dst.geturl()
+    raw_html = dst.read() 
+    dst.close()
+    biggest_image_link = get_biggest_img(final_url, raw_html)
+    
+    return final_url, biggest_image_link
+     
 
 def get_image_link(tweet):
     """
         get tweet in json format
-        returns "" , if url does not contain image or link is broken
-                link to the image, if tweet contains active image link
-                    if the image is hosted on "popular" hosting, it returns the hotlink of the image.
-                    else returns the url of hosting site containing the image.
-
-        if multiple image links are avaiable in a tweet, only first one is returned
+        returns None , if link is broken
+                (<final_url>, <url_to_biggest_img>), <url_to_biggest_img> can be '' if image is not found
     """
     urls = re.findall(r'https?://\S+', tweet['text'])
     if len(urls) != 0:
         for link in urls:
-            img_link = inspect_link(link)
-            if img_link != "":
-                return img_link
-    return ""
+            img_link = inspect_link_urllib2(link)
+            return img_link
     
 #if __name__ == '__main__':
-#    f = open("../egypt_dataset.txt")
+#    #f = open("../egypt_dataset.txt")
+#    f = open("../london_riots.txt")
 #    tweets = f.readlines()
 #    f.close()
 #    for tweet in tweets:
-#        get_image_link(json.loads(tweet))
+#        try:
+#            print get_image_link(json.loads(tweet.replace("\'","\"").replace("None", "\"\"")))
+#        except:
+#            print "oh man"

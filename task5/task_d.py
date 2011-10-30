@@ -61,7 +61,7 @@ IMG_KEYWORDS = [
 ]
 
 def get_image_link(link):
-    u = unshorten_url(link)
+    u = s_unshorten_url(link)
     for i in IMG_KEYWORDS:
         if i in u:
             return u + "\r\n"
