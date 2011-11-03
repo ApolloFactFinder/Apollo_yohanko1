@@ -117,8 +117,12 @@ def url_fix(s, charset='utf-8'):
     return urlparse.urlunsplit((scheme, netloc, path, qs, anchor))
 
 def is_wanted(dim):
-    ratio_thres = 3
-    k = (1/float(ratio_thres)) < dim[0]/float(dim[1]) < ratio_thres
+    # check ratio for ad
+    ratio_thres = 4
+    small_thres = (150, 150)
+
+    k = (1/float(ratio_thres)) < dim[0]/float(dim[1]) < ratio_thres and\
+    sum(dim) > sum(small_thres) # check if image is too small (often icon)
     return k
 
 def root_domain(target):
