@@ -163,10 +163,11 @@ def get_biggest_img(origin, html):
             print esc_url
             print "problem reading the image"
             continue
-        f = open(temp_name, 'w')
-        f.write(k)
-        f.close()
+
         try:
+            f = open(temp_name, 'w')
+            f.write(k)
+            f.close()
             im = Image.open(temp_name)
             #print im.size
             if is_wanted(im.size):
@@ -188,12 +189,13 @@ def inspect_link_urllib2(link):
     original_url = "http://"+link if "http" not in link else link
     try:
         dst = urllib2.urlopen(original_url, timeout=5)
+        final_url = dst.geturl()
+        raw_html = dst.read() 
+        dst.close()
     except:
         print "url invalid: " + link
         return link, ""
-    final_url = dst.geturl()
-    raw_html = dst.read() 
-    dst.close()
+
     biggest_image_link = get_biggest_img(final_url, raw_html)
     
     return final_url, biggest_image_link
@@ -213,7 +215,8 @@ def get_image_link(tweet):
             return img_link
     
 #if __name__ == '__main__':
-#    print inspect_link_urllib2("http://www.guardian.co.uk/commentisfree/2011/aug/18/riots-sentencing-courts?utm_source=twitterfeed&utm_medium=twitter&utm_campaign=Feed%3A+theguardian%2Fmedia%2Frss+%28Media%29")
+#   print inspect_link_urllib2("http://www.photozz.com/?1ixz")
+    #print inspect_link_urllib2("http://www.guardian.co.uk/commentisfree/2011/aug/18/riots-sentencing-courts?utm_source=twitterfeed&utm_medium=twitter&utm_campaign=Feed%3A+theguardian%2Fmedia%2Frss+%28Media%29")
 #    #f = open("../egypt_dataset.txt")
 #    f = open("../london_riots.txt")
 #    tweets = f.readlines()
