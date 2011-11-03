@@ -119,7 +119,7 @@ def url_fix(s, charset='utf-8'):
 def is_wanted(dim):
     # check ratio for ad
     ratio_thres = 4
-    small_thres = (150, 150)
+    small_thres = (300, 180) # need to be tuned
 
     k = (1/float(ratio_thres)) < dim[0]/float(dim[1]) < ratio_thres and\
     sum(dim) > sum(small_thres) # check if image is too small (often icon)
@@ -215,7 +215,9 @@ def get_image_link(tweet):
             print img_link
             return img_link
     
-#if __name__ == '__main__':
+if __name__ == '__main__':
+    print is_wanted((200,200))
+    print is_wanted((460,1))
 #    #f = open("../egypt_dataset.txt")
 #    f = open("../london_riots.txt")
 #    tweets = f.readlines()
