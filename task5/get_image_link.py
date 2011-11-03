@@ -213,8 +213,8 @@ def get_image_link(tweet):
             print img_link
             return img_link
     
-if __name__ == '__main__':
-    print inspect_link_urllib2("http://english.peopledaily.com.cn/90780/7574975.html")
+#if __name__ == '__main__':
+#    print inspect_link_urllib2("http://english.peopledaily.com.cn/90780/7574975.html")
 #    #f = open("../egypt_dataset.txt")
 #    f = open("../london_riots.txt")
 #    tweets = f.readlines()
