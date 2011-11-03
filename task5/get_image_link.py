@@ -117,11 +117,8 @@ def url_fix(s, charset='utf-8'):
     return urlparse.urlunsplit((scheme, netloc, path, qs, anchor))
 
 def is_wanted(dim):
-    print dim[0]
-    print dim[1]
     ratio_thres = 3
     k = (1/float(ratio_thres)) < dim[0]/float(dim[1]) < ratio_thres
-    print k
     return k
 
 def root_domain(target):
@@ -211,6 +208,7 @@ def get_image_link(tweet):
     if len(urls) != 0:
         for link in urls:
             img_link = inspect_link_urllib2(link)
+            print img_link
             return img_link
     
 #if __name__ == '__main__':
