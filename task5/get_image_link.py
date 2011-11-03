@@ -193,7 +193,7 @@ def inspect_link_urllib2(link):
         raw_html = dst.read() 
         dst.close()
     except:
-        print "url invalid: " + link
+        print "url invalid: " + repr(link)
         return link, ""
 
     biggest_image_link = get_biggest_img(final_url, raw_html)
