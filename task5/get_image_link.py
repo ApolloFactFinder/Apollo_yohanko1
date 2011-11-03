@@ -116,6 +116,28 @@ def url_fix(s, charset='utf-8'):
     qs = urllib.quote_plus(qs, ':&=')
     return urlparse.urlunsplit((scheme, netloc, path, qs, anchor))
 
+def is_wanted(dim):
+    print dim[0]
+    print dim[1]
+    ratio_thres = 3
+    k = (1/float(ratio_thres)) < dim[0]/float(dim[1]) < ratio_thres
+    print k
+    return k
+
+def root_domain(target):
+    if 'http://' in origin or 'https://' in origin:
+        lambda origin: origin[:origin.index('/')]
+
+def get_absolute(origin, path):
+    print origin
+    print path
+    k = re.match(r'(?P<top>(https?://[a-zA-Z0-9.]+))/?\S+', origin) 
+    if k == None:
+        return path
+    else:
+        return k.group('top')+ path 
+    
+
 def get_biggest_img(origin, html):
     try:
         soup = BeautifulSoup(html)
@@ -133,7 +155,7 @@ def get_biggest_img(origin, html):
     # download imgs and check dimension
     for i in img_tags:
         try:
-            esc_url = url_fix(i['src'])
+            esc_url = url_fix(get_absolute(origin, i['src']))
         except:
             continue
         #print "o: " + origin
@@ -150,14 +172,17 @@ def get_biggest_img(origin, html):
         try:
             im = Image.open(temp_name)
             #print im.size
-            if im.size > max_dim:
-                max_dim = im.size
-                max_dim_url = i['src']
+            if is_wanted(im.size):
+                if im.size > max_dim:
+                    max_dim = im.size
+                    max_dim_url = i['src']
         except:
             continue
 
     if os.path.isfile(temp_name):
         os.remove(temp_name)
+
+    # handle on-site image
     return max_dim_url
         
 
