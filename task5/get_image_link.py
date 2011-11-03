@@ -125,13 +125,9 @@ def is_wanted(dim):
     sum(dim) > sum(small_thres) # check if image is too small (often icon)
     return k
 
-def root_domain(target):
-    if 'http://' in origin or 'https://' in origin:
-        lambda origin: origin[:origin.index('/')]
-
 def get_absolute(origin, path):
-    k = re.match(r'(?P<top>(https?://[a-zA-Z0-9.]+))/?\S+', origin) 
-    if k == None:
+    k = re.match(r'(?P<top>(https?://[a-zA-Z0-9.]+))/?\S+', path) 
+    if k != None:
         return path
     else:
         return k.group('top')+ path 
@@ -164,6 +160,8 @@ def get_biggest_img(origin, html):
         try:
             k = urllib2.urlopen(esc_url).read()
         except: #urllib2.HTTPError, ignore 4xx errors
+            print esc_url
+            print "problem reading the image"
             continue
         f = open(temp_name, 'w')
         f.write(k)
@@ -176,6 +174,7 @@ def get_biggest_img(origin, html):
                     max_dim = im.size
                     max_dim_url = i['src']
         except:
+            print "problem opening the image"
             continue
 
     if os.path.isfile(temp_name):
@@ -213,8 +212,8 @@ def get_image_link(tweet):
             print img_link
             return img_link
     
-#if __name__ == '__main__':
-#    print inspect_link_urllib2("http://english.peopledaily.com.cn/90780/7574975.html")
+if __name__ == '__main__':
+    print inspect_link_urllib2("http://www.guardian.co.uk/commentisfree/2011/aug/18/riots-sentencing-courts?utm_source=twitterfeed&utm_medium=twitter&utm_campaign=Feed%3A+theguardian%2Fmedia%2Frss+%28Media%29")
 #    #f = open("../egypt_dataset.txt")
 #    f = open("../london_riots.txt")
 #    tweets = f.readlines()
