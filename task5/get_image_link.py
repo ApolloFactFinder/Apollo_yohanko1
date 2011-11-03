@@ -130,8 +130,6 @@ def root_domain(target):
         lambda origin: origin[:origin.index('/')]
 
 def get_absolute(origin, path):
-    print origin
-    print path
     k = re.match(r'(?P<top>(https?://[a-zA-Z0-9.]+))/?\S+', origin) 
     if k == None:
         return path
@@ -216,8 +214,7 @@ def get_image_link(tweet):
             return img_link
     
 if __name__ == '__main__':
-    print is_wanted((200,200))
-    print is_wanted((460,1))
+    print inspect_link_urllib2("http://english.peopledaily.com.cn/90780/7574975.html")
 #    #f = open("../egypt_dataset.txt")
 #    f = open("../london_riots.txt")
 #    tweets = f.readlines()
