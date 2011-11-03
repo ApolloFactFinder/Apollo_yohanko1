@@ -212,8 +212,8 @@ def get_image_link(tweet):
             print img_link
             return img_link
     
-if __name__ == '__main__':
-    print inspect_link_urllib2("http://www.guardian.co.uk/commentisfree/2011/aug/18/riots-sentencing-courts?utm_source=twitterfeed&utm_medium=twitter&utm_campaign=Feed%3A+theguardian%2Fmedia%2Frss+%28Media%29")
+#if __name__ == '__main__':
+#    print inspect_link_urllib2("http://www.guardian.co.uk/commentisfree/2011/aug/18/riots-sentencing-courts?utm_source=twitterfeed&utm_medium=twitter&utm_campaign=Feed%3A+theguardian%2Fmedia%2Frss+%28Media%29")
 #    #f = open("../egypt_dataset.txt")
 #    f = open("../london_riots.txt")
 #    tweets = f.readlines()
