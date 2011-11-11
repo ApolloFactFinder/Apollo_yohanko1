@@ -3,10 +3,11 @@ from BeautifulSoup import BeautifulSoup
 from StringIO import StringIO
 from PIL import Image
 import urllib2
+import urllib
 import pycurl
 
+DEBUG = False
 temp_name = 'img_temp'
-
 
 IMG_KEYWORDS = [
 "twitpic", "imgur", "postimage", "picasaweb",
@@ -15,10 +16,20 @@ IMG_KEYWORDS = [
 "image", "img",  "photo", "pic"
 ]# not used
 
-# copied from Werkzeug
-import urllib
-import urlparse
+default_data_keywords = [
+        # this really depends on dataset
+        ]
 
+default_filter_keywords = [
+    'doubleclick', # google ad
+    'thumb',        # used for thumbnails 
+        ]
+
+def debug_print(log):
+    if DEBUG:
+        print log
+
+# copied from Werkzeug
 def url_fix(s, charset='utf-8'):
     """Sometimes you get an URL by a user that just isn't a real
     URL because it contains unsafe characters like ' ' and so on.  This
@@ -44,7 +55,7 @@ def is_wanted(dim):
     sum(dim) > sum(small_thres) # check if image is too small (often icon)
     return k
 
-def filter_img_on_url(url, dk, fk):
+def is_relevant(url, dk, fk):
     """ 
         True: if dk is in url
         False: if fk is in url or dk is not in url
@@ -53,6 +64,8 @@ def filter_img_on_url(url, dk, fk):
     for k in fk: # usually ad url like doubleclick.net here
         if k.lower() in url:
             return False
+    if dk == []:
+        return True
     for k in dk: # dataset from our keywords
         if k.lower() in url:
             return True
@@ -70,12 +83,12 @@ def get_biggest_img(origin, html, dk, fk):
     try:
         soup = BeautifulSoup(html)
     except UnicodeDecodeError:
-        print "unable to parse URL"
+        debug_print( "unable to parse URL")
         return ""
     img_tags = soup.findAll('img')
 
     if img_tags == None:
-        print "no image found"
+        debug_print( "no image found")
         return ""
         
     max_dim_url = ""
@@ -87,9 +100,8 @@ def get_biggest_img(origin, html, dk, fk):
             if not is_relevant(esc_url, dk, fk):
                 continue
             k = urllib2.urlopen(esc_url).read()
-        except: #urllib2.HTTPError, ignore 4xx errors
-            print esc_url
-            print "problem reading the image"
+        except: #urllib2.HTTPError, ignore 4xx errors, sometimes 'src' attr doesn't exist
+            debug_print( "problem reading the image: " +esc_url)
             continue
 
         try:
@@ -97,13 +109,13 @@ def get_biggest_img(origin, html, dk, fk):
             f.write(k)
             f.close()
             im = Image.open(temp_name)
-            #print im.size
+            #debug_print( str(im.size))
             if is_wanted(im.size):
                 if im.size > max_dim:
                     max_dim = im.size
                     max_dim_url = i['src']
         except:
-            print "problem opening the image"
+            debug_print("problem opening the image")
             continue
 
     if os.path.isfile(temp_name):
@@ -121,7 +133,7 @@ def inspect_link_urllib2(link, dk, fk):
         raw_html = dst.read() 
         dst.close()
     except:
-        print "url invalid: " + repr(link)
+        debug_print( "url invalid: " + repr(link))
         return link, ""
 
     biggest_image_link = get_biggest_img(final_url, raw_html, dk, fk)
@@ -129,7 +141,7 @@ def inspect_link_urllib2(link, dk, fk):
     return final_url, biggest_image_link
      
 
-def get_image_link(tweet, data_keywords=[], filter_keywords=[]):
+def get_image_link(tweet, data_keywords=default_data_keywords, filter_keywords=default_filter_keywords):
     """
         tweet: json format
         data_keywords: include image if url contains these keywords
@@ -142,11 +154,11 @@ def get_image_link(tweet, data_keywords=[], filter_keywords=[]):
     if len(urls) != 0:
         for link in urls:
             img_link = inspect_link_urllib2(link, data_keywords, filter_keywords)
-            print img_link
+            debug_print(img_link)
             return img_link
     
-#if __name__ == '__main__':
-#   print inspect_link_urllib2("http://www.photozz.com/?1ixz")
+if __name__ == '__main__':
+    print inspect_link_urllib2("http://t.co/XIXrGr4", [], ["doubleclick"])
 #    print inspect_link_urllib2("http://www.guardian.co.uk/commentisfree/2011/aug/18/riots-sentencing-courts?utm_source=twitterfeed&utm_medium=twitter&utm_campaign=Feed%3A+theguardian%2Fmedia%2Frss+%28Media%29")
 #    #f = open("../egypt_dataset.txt")
 #    f = open("../london_riots.txt")
