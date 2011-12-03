@@ -181,7 +181,6 @@ def main():
     inputfile = sys.argv[1]
     inputf = open(inputfile)
     tweets = inputf.readlines()
-    tweets = tweets[:100]
     inputf.close()
 
     outf = open('output_' + inputfile, 'w')
