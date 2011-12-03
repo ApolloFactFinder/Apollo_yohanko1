@@ -67,7 +67,6 @@ def crawl_img_list(link):
         raw_html = dst.read() 
         dst.close()
     except:
-        print 'exception at opening url'
         return "", ""
 
     return get_all_img(final_url, raw_html)
@@ -79,15 +78,12 @@ def get_all_img(origin, html):
     except UnicodeDecodeError:
         debug_print( "unable to parse URL")
         return ""
-    img_tags = soup.findAll('img')
-    print '3'
 
+    img_tags = soup.findAll('img')
     if img_tags == None:
         debug_print( "no image found")
         return ""
         
-    print '4'
-
     temp_name = str(int(10000000000 * random.random()))
     max_dim_url = ""
     max_dim = (0,0)
@@ -117,7 +113,6 @@ def get_all_img(origin, html):
     if os.path.isfile(temp_name):
         os.remove(temp_name)
 
-    print max_dim_url
     # handle on-site image
     return img_list, max_dim_url
 
@@ -175,7 +170,8 @@ def work(tweet_raw):
             urls = re.findall(r'https?://\S+', tweet_text)
             if len(urls) != 0:
                 current['all_imgs'], current['claim_img'] = crawl_img_list(urls[0]) # crawl on first url only
-                shared_q.put(current)
+                if not (len(current['all_imgs']) == 0 or current['all_imgs'] == ''):
+                    shared_q.put(current)
     except:
         # ignore this tweet
         pass
@@ -185,6 +181,7 @@ def main():
     inputfile = sys.argv[1]
     inputf = open(inputfile)
     tweets = inputf.readlines()
+    tweets = tweets[:100]
     inputf.close()
 
     outf = open('output_' + inputfile, 'w')
