@@ -5,6 +5,7 @@ from PIL import Image
 import urllib2
 import urllib
 import pycurl
+import random
 
 DEBUG = False
 temp_name = 'img_temp'
@@ -101,7 +102,7 @@ def get_biggest_img(origin, html, dk, fk):
                 continue
             k = urllib2.urlopen(esc_url).read()
         except: #urllib2.HTTPError, ignore 4xx errors, sometimes 'src' attr doesn't exist
-            debug_print( "problem reading the image: " +esc_url)
+            debug_print( "problem reading the image")
             continue
 
         try:
@@ -157,8 +158,8 @@ def get_image_link(tweet, data_keywords=default_data_keywords, filter_keywords=d
             debug_print(img_link)
             return img_link
     
-if __name__ == '__main__':
-    print inspect_link_urllib2("http://t.co/XIXrGr4", [], ["doubleclick"])
+#if __name__ == '__main__':
+#    print inspect_link_urllib2("http://t.co/XIXrGr4", [], ["doubleclick"])
 #    print inspect_link_urllib2("http://www.guardian.co.uk/commentisfree/2011/aug/18/riots-sentencing-courts?utm_source=twitterfeed&utm_medium=twitter&utm_campaign=Feed%3A+theguardian%2Fmedia%2Frss+%28Media%29")
 #    #f = open("../egypt_dataset.txt")
 #    f = open("../london_riots.txt")
