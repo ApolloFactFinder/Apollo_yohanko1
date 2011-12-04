@@ -6,8 +6,8 @@ import urllib2
 import urllib
 import pycurl
 
-import gevent
-from gevent import monkey
+import gevent, exceptions
+from gevent import monkey, Greenlet
 from gevent.queue import Queue
 import time
 import random
@@ -176,6 +176,23 @@ def work(tweet_raw):
         # ignore this tweet
         pass
 
+def fileIO(inputfile):
+    outf = open('output_' + inputfile, 'w')
+
+    count = 0
+    while True:
+        try:
+            got = shared_q.get(block=False)
+            if got == exceptions.StopIteration:
+                print "yosi!"
+                break
+            got['id'] = count
+            count += 1
+            outf.write(json.dumps(got)+'\n')
+        except gevent.queue.Empty:
+            time.sleep(0)
+
+    outf.close()
             
 def main():
     inputfile = sys.argv[1]
@@ -183,69 +200,14 @@ def main():
     tweets = inputf.readlines()
     inputf.close()
 
-    outf = open('output_' + inputfile, 'w')
-
     jobs = [gevent.spawn(work, tweet) for tweet in tweets]
 
-    empty = 0
-    count = 0
-    while True:
-        try:
-            got = shared_q.get(block=False)
-            emtpy = 0
-            got['id'] = count
-            count += 1
-            outf.write(json.dumps(got)+'\n')
-
-        except gevent.queue.Empty:
-            empty += 1
-            if empty > 10:
-                break
-            time.sleep(2)
-
+    g = Greenlet(fileIO, inputfile)
+    g.start()
     gevent.joinall(jobs)
+    shared_q.put(StopIteration)
+    g.join()
+    print 'join done'
     
-
-def main_old():
-    inputfile = sys.argv[1]
-    inputf = open(inputfile)
-    lines = inputf.readlines()
-    inputf.close()
-
-    outf = open('output_' + inputfile, 'w')
-
-    ig = 0
-    intact = 0
-    for l in lines:
-        try:
-            # parse here
-            cell = json.loads('{'+l+'}')
-        except Exception:
-            ig += 1
-            continue
-
-        current = {}
-        tweet = cell['claim_desc']
-        img_found = cell['claim_img']
-        current['claim_desc'] = tweet
-        current['claim_img'] = img_found
-        current['tweet_id'] = intact
-
-        if not keyword_filtered(cell['claim_img']):
-            intact += 1
-            urls = re.findall(r'https?://\S+', tweet)
-            if len(urls) != 0:
-                current['all_imgs'] = crawl_img_list(urls[0]) # crawl on first url only
-                outf.write(json.dumps(current)+'\n')
-
-        
-    print "ignored: " + str(float(ig)/len(lines)) 
-    print "intact: " + str(intact)
-
-    #write here
-    outf.close()
-
-
-
 if __name__ == '__main__':
     main() 
