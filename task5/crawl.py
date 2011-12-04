@@ -48,7 +48,7 @@ def debug_print(log):
 def keyword_filtered(claim_url):
     for i in default_filter_keywords:
         if i in claim_url:
-            return True
+            return False
 
     for i in context_keywords:
         if i in claim_url:
@@ -96,13 +96,11 @@ def get_all_img(origin, html):
             img_list.append(esc_url)
 
             f = open(temp_name, 'w')
-            while not os.path.isfile(temp_name):
-                temp_name = str(int(10000000000 * random.random()))
             f.write(k)
             f.close()
             im = Image.open(temp_name)
             #debug_print( str(im.size))
-            if is_wanted(im.size) and keyword_filtered(esc_url):
+            if is_wanted(im.size) and not keyword_filtered(esc_url):
                 if im.size > max_dim:
                     max_dim = im.size
                     max_dim_url = i['src']
@@ -198,6 +196,7 @@ def main():
     inputfile = sys.argv[1]
     inputf = open(inputfile)
     tweets = inputf.readlines()
+    tweets[:100]
     inputf.close()
 
     jobs = [gevent.spawn(work, tweet) for tweet in tweets]
