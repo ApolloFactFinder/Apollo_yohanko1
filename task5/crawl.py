@@ -9,8 +9,10 @@ import pycurl
 import gevent, exceptions
 from gevent import monkey, Greenlet
 from gevent.queue import Queue
+from gevent.pool import Pool
 import time
 import random
+import multiprocessing
 
 shared_q = Queue()
 monkey.patch_all()
@@ -100,7 +102,7 @@ def get_all_img(origin, html):
             f.close()
             im = Image.open(temp_name)
             #debug_print( str(im.size))
-            if is_wanted(im.size) and not keyword_filtered(esc_url):
+            if is_wanted(im.size) and keyword_filtered(esc_url):
                 if im.size > max_dim:
                     max_dim = im.size
                     max_dim_url = i['src']
@@ -196,9 +198,10 @@ def main():
     inputfile = sys.argv[1]
     inputf = open(inputfile)
     tweets = inputf.readlines()
-    tweets[:100]
     inputf.close()
 
+    thread_count = multiprocessing.cpu_count() * 10
+    pool = Pool(thread_count)
     jobs = [gevent.spawn(work, tweet) for tweet in tweets]
 
     g = Greenlet(fileIO, inputfile)
