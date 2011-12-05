@@ -1,23 +1,25 @@
 import sys, os, re, httplib, urlparse, json
-from BeautifulSoup import BeautifulSoup
 from StringIO import StringIO
 from PIL import Image
 import urllib2
+
 import urllib
 import pycurl
+import exceptions
 
-import gevent, exceptions
-from gevent import monkey, Greenlet
-from gevent.queue import Queue
-from gevent.pool import Pool
 import time
 import random
 import multiprocessing
+import Queue
+from BeautifulSoup import BeautifulSoup
 
-shared_q = Queue()
-monkey.patch_all()
+#import gevent
+#from gevent import monkey, Greenlet
+#from gevent.queue import Queue
+#from gevent.pool import Pool
 
-temp_name = 'img_temp'
+#monkey.patch_all()
+
 default_filter_keywords = [
     'doubleclick', # google ad
     'thumb',        # used for thumbnails 
@@ -157,59 +159,82 @@ def is_rt(tweet):
             return True
     return False
 
-def work(tweet_raw):
+def worker(input_q, output_q):
     # need to be fixed for invalid json data like irene; i hate inconsistent data
-    cleaned = tweet_raw.replace('\\','').replace('\'', '\"').replace(' None', ' null')
-    try:
-        tweet_json = json.loads(cleaned)
-        tweet_text = tweet_json['text']
-        if not is_rt(tweet_text):
-            current = {}
-            current['claim_desc'] = tweet_text
-
-            urls = re.findall(r'https?://\S+', tweet_text)
-            if len(urls) != 0:
-                current['all_imgs'], current['claim_img'] = crawl_img_list(urls[0]) # crawl on first url only
-                if not (len(current['all_imgs']) == 0 or current['all_imgs'] == ''):
-                    shared_q.put(current)
-    except:
-        # ignore this tweet
-        pass
-
-def fileIO(inputfile):
-    outf = open('output_' + inputfile, 'w')
-
-    count = 0
     while True:
         try:
-            got = shared_q.get(block=False)
-            if got == exceptions.StopIteration:
-                print "yosi!"
+            tweet_raw = input_q.get_nowait()
+            if str(tweet_raw) == halt:
+                print 'halting'
                 break
-            got['id'] = count
-            count += 1
-            outf.write(json.dumps(got)+'\n')
-        except gevent.queue.Empty:
-            time.sleep(0)
+            cleaned = tweet_raw.replace('\\','').replace('\'', '\"').replace(' None', ' null')
+            tweet_json = json.loads(cleaned)
+            tweet_text = tweet_json['text']
+            if not is_rt(tweet_text):
+                current = {}
+                current['claim_desc'] = tweet_text
 
-    outf.close()
+                urls = re.findall(r'https?://\S+', tweet_text)
+                if len(urls) != 0:
+                    current['all_imgs'], current['claim_img'] = crawl_img_list(urls[0]) # crawl on first url only
+                    if not (len(current['all_imgs']) <= 2 or current['all_imgs'] == ''):
+                        output_q.put(current)
+        except Queue.Empty:
+            time.sleep(0)
+        except:
+            # ignore this tweet
+            continue
+
+    output_q.put(done)
             
 def main():
     inputfile = sys.argv[1]
     inputf = open(inputfile)
     tweets = inputf.readlines()
+    tweets = tweets[:100]
     inputf.close()
 
-    thread_count = multiprocessing.cpu_count() * 10
-    pool = Pool(thread_count)
-    jobs = [gevent.spawn(work, tweet) for tweet in tweets]
+    global halt
+    halt = 'STOP'
+    global done
+    done = 'DONE'
 
-    g = Greenlet(fileIO, inputfile)
-    g.start()
-    gevent.joinall(jobs)
-    shared_q.put(StopIteration)
-    g.join()
-    print 'join done'
+    input_q = multiprocessing.Queue()
+    output_q= multiprocessing.Queue()
+    num_procs = multiprocessing.cpu_count() * 8
+    jobs = []
+    for i in xrange(num_procs):
+        p = multiprocessing.Process(target = worker, args=(input_q, output_q, ))
+        jobs.append(p)
+        p.start()
     
+    # feed input
+    for i in tweets:
+        input_q.put(i) 
+
+    for i in xrange(num_procs):
+        input_q.put(halt)
+
+    outf = open('output_' + inputfile, 'w')
+    done_count, out_count = 0, 0
+    while done_count != num_procs:
+        try:
+            output = output_q.get_nowait()
+            if str(output) == done:
+                done_count += 1
+                continue
+            output['id'] = out_count
+            outf.write(json.dumps(output)+'\n')
+            out_count += 1
+        except Queue.Empty:
+            print 'lol for: ' + str(done_count)
+            time.sleep(1)
+
+    outf.close()
+
+    for j in jobs:
+        j.join() 
+        print '%s.exitcode = %s' % (j.name, j.exitcode)
+
 if __name__ == '__main__':
     main() 
